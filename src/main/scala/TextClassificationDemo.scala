@@ -11,6 +11,7 @@ import org.apache.spark.sql.SparkSession
 object TextClassificationDemo {
   def main(args: Array[String]) = {
     Logger.getLogger("org.apache.spark").setLevel(Level.INFO)
+    System.setProperty("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
 
     val stop = new StopRecognition()
     stop.insertStopNatures("w")//过滤掉标点
@@ -21,14 +22,19 @@ object TextClassificationDemo {
     stop.insertStopNatures("’")
 
     val spark = SparkSession.builder().appName("textClassificationDemo").master("local").getOrCreate()
-    val data = spark.sparkContext.textFile("files/a.txt")
+    val data = spark.sparkContext.textFile("src/main/scala/files/a.txt")
 
-    val splits = data.map(_.replaceAll("[1-9]\\.", "\\n"))
+    val splits = data.map(_.replaceAll("[1-9]\\.", "\r\n")).map(_.replaceAll("<.*?>", ""))
 
-    println(splits.toString())
+//    splits.saveAsTextFile("src/main/scala/files/b")
 
-    val test = DicAnalysis.parse("str")
+    val doc = splits.map(x => DicAnalysis.parse(x).recognition(stop))
+
+    doc.collect().foreach(println)
+
+
+    spark.close()
+
   }
-
 
 }
